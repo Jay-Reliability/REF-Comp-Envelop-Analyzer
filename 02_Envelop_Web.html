@@ -1,0 +1,2817 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comp Envelop Analyzer V3.0 ⚡ (Authored by JH Lee)</title>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  html, body {
+    width: 100%;
+    height: 100%;
+    background-color: #EEF2F6;
+    font-family: 'Malgun Gothic', 'Apple SD Gothic Neo', 'NanumGothic', sans-serif;
+    font-size: 9pt;
+    color: #1F2933;
+    overflow: hidden;
+    user-select: none;
+  }
+
+  /* 윈도우 타이틀 바 (Web 환경에서 PyQt5 QMainWindow 타이틀 재현) */
+  .window-titlebar {
+    height: 30px;
+    background: linear-gradient(90deg, #1E293B 0%, #334E68 100%);
+    color: #FFFFFF;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 12px;
+    font-size: 9.5pt;
+    font-weight: 700;
+    border-bottom: 1px solid #BCCCDC;
+    flex-shrink: 0;
+  }
+  .window-titlebar .title-text {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .window-titlebar .window-controls {
+    display: flex;
+    gap: 6px;
+  }
+  .window-titlebar .win-dot {
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  /* 메인 레이아웃 (QMainWindow CentralWidget -> QHBoxLayout -> QSplitter) */
+  .main-container {
+    display: flex;
+    flex-direction: row;
+    width: 100%;
+    height: calc(100% - 30px);
+    padding: 6px;
+    gap: 0;
+    overflow: hidden;
+  }
+
+  /* 좌측 컨트롤 패널 (QScrollArea FixedWidth 360) */
+  .control-scroll {
+    width: 360px;
+    min-width: 280px;
+    max-width: 520px;
+    height: 100%;
+    overflow-y: auto;
+    overflow-x: hidden;
+    background-color: transparent;
+    padding: 5px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    flex-shrink: 0;
+  }
+
+  /* QSplitter 핸들 */
+  .splitter-handle {
+    width: 6px;
+    cursor: col-resize;
+    background-color: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .splitter-handle:hover, .splitter-handle.dragging {
+    background-color: #CBD5E1;
+  }
+  .splitter-handle::after {
+    content: "";
+    width: 2px;
+    height: 36px;
+    background-color: #9FB3C8;
+    border-radius: 1px;
+  }
+
+  /* QGroupBox 스타일 */
+  .q-groupbox {
+    position: relative;
+    font-weight: bold;
+    border: 1px solid #B8C2CC;
+    border-radius: 8px;
+    margin-top: 9px;
+    padding: 14px 8px 8px 8px;
+    background-color: #F8FAFC;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .q-groupbox-title {
+    position: absolute;
+    top: -9px;
+    left: 10px;
+    padding: 0 4px;
+    background-color: #F8FAFC;
+    color: #243B53;
+    font-weight: bold;
+    font-size: 9pt;
+    line-height: 16px;
+  }
+
+  /* QLabel 스타일 */
+  .q-label {
+    color: #243B53;
+    background-color: transparent;
+    font-weight: normal;
+    font-size: 9pt;
+    line-height: 1.35;
+    word-break: break-all;
+  }
+  .q-label.status-label {
+    padding: 2px 2px 4px 2px;
+    font-weight: 600;
+  }
+  .slot-label {
+    color: #243B53;
+    font-weight: 600;
+    font-size: 9pt;
+    margin-top: 2px;
+  }
+
+  /* QPushButton 기본 스타일 */
+  .q-btn {
+    background-color: #2F80ED;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 7px;
+    padding: 8px 12px;
+    font-family: inherit;
+    font-size: 9pt;
+    font-weight: bold;
+    cursor: pointer;
+    text-align: center;
+    transition: background-color 0.12s ease;
+    line-height: 1.2;
+  }
+  .q-btn:hover:not(:disabled) {
+    background-color: #1C64D1;
+  }
+  .q-btn:active:not(:disabled) {
+    background-color: #164E9E;
+  }
+  .q-btn:disabled {
+    background-color: #A9C4EC;
+    color: #EDF2FB;
+    cursor: not-allowed;
+  }
+
+  /* 설정 적용 및 분석 실행 버튼 (녹색 + 노란 글씨) */
+  .q-btn-run {
+    background-color: #2E7D32;
+    color: yellow;
+    border: none;
+    border-radius: 7px;
+    padding: 6px 11px;
+    font-weight: 700;
+    font-size: 10pt;
+    min-height: 35px;
+    margin-top: 2px;
+  }
+  .q-btn-run:hover:not(:disabled) {
+    background-color: #1B5E20;
+  }
+  .q-btn-run:active:not(:disabled) {
+    background-color: #14481A;
+  }
+  .q-btn-run:disabled {
+    background-color: #A5C7A7;
+    color: #EFEFC0;
+  }
+
+  /* 종료 버튼 (적색 + 흰 글씨) */
+  .q-btn-exit {
+    background-color: #D92D20;
+    color: #FFFFFF;
+    border: none;
+    border-radius: 7px;
+    padding: 6px 11px;
+    font-weight: 700;
+    font-size: 9pt;
+    min-height: 35px;
+  }
+  .q-btn-exit:hover:not(:disabled) {
+    background-color: #B42318;
+  }
+  .q-btn-exit:active:not(:disabled) {
+    background-color: #7A271A;
+  }
+
+  /* QComboBox 스타일 */
+  .q-combobox {
+    width: 100%;
+    background-color: #FFFFFF;
+    border: 1px solid #BCCCDC;
+    border-radius: 6px;
+    padding: 4px 6px;
+    font-family: inherit;
+    font-size: 9pt;
+    color: #1F2933;
+    outline: none;
+  }
+  .q-combobox:disabled {
+    background-color: #F0F4F8;
+    color: #829AB1;
+    cursor: not-allowed;
+  }
+  .q-combobox:focus {
+    border-color: #2F80ED;
+  }
+
+  .slot-wrapper {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .slot-wrapper.hidden {
+    display: none;
+  }
+
+  /* 우측 시각화 패널 */
+  .visual-panel {
+    flex: 1;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 4px 6px;
+    overflow: hidden;
+    min-width: 0;
+  }
+
+  /* 우측 상단 정보 바 */
+  .info-layout {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    min-height: 32px;
+    flex-shrink: 0;
+    flex-wrap: wrap;
+  }
+  .info-layout .info-item {
+    color: #243B53;
+    font-weight: 600;
+    font-size: 9.5pt;
+    white-space: nowrap;
+  }
+  .info-spacer {
+    flex: 1;
+  }
+  .btn-save-graph {
+    min-height: 30px;
+    padding: 6px 12px;
+  }
+
+  /* 그래프 영역 (stretch=3) */
+  .graph-section {
+    flex: 3;
+    display: flex;
+    flex-direction: column;
+    min-height: 240px;
+    background-color: #FFFFFF;
+    border: 1px solid #BCCCDC;
+    border-radius: 6px;
+    overflow: hidden;
+  }
+
+  /* Matplotlib NavigationToolbar2QT 재현 */
+  .mpl-toolbar {
+    height: 30px;
+    background-color: #F8FAFC;
+    border-bottom: 1px solid #D9E2EC;
+    display: flex;
+    align-items: center;
+    padding: 0 8px;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .mpl-tool-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    border-radius: 4px;
+    padding: 3px 7px;
+    font-size: 8.5pt;
+    color: #243B53;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 3px;
+  }
+  .mpl-tool-btn:hover {
+    background-color: #E2E8F0;
+    border-color: #CBD5E1;
+  }
+  .mpl-tool-btn.active {
+    background-color: #DBEAFE;
+    border-color: #2F80ED;
+    color: #1D4ED8;
+    font-weight: bold;
+  }
+  .mpl-sep {
+    width: 1px;
+    height: 18px;
+    background-color: #CBD5E1;
+    margin: 0 3px;
+  }
+  .mpl-coords {
+    margin-left: auto;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 8.5pt;
+    color: #486581;
+  }
+
+  .canvas-wrapper {
+    flex: 1;
+    width: 100%;
+    height: 100%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: #FFFFFF;
+    overflow: hidden;
+  }
+  #envelopCanvas {
+    display: block;
+    max-width: 100%;
+    max-height: 100%;
+  }
+
+  /* 우측 하단 영역 (stretch=2, 좌: Data Analysis, 우: 데이터 테이블) */
+  .bottom-layout {
+    flex: 2;
+    display: flex;
+    flex-direction: row;
+    gap: 8px;
+    min-height: 185px;
+    overflow: hidden;
+  }
+
+  /* 좌측 하단 : Data Analysis (stretch=1) */
+  .analysis-panel {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 260px;
+    overflow: hidden;
+  }
+  .panel-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-height: 28px;
+    flex-shrink: 0;
+  }
+  .panel-header-row .panel-title {
+    color: #243B53;
+    font-size: 9pt;
+    font-weight: 600;
+  }
+  .btn-small-export {
+    padding: 5px 10px;
+    font-size: 8.5pt;
+  }
+
+  .q-textedit {
+    flex: 1;
+    width: 100%;
+    min-height: 140px;
+    background-color: #FFFFFF;
+    color: #102A43;
+    border: 1px solid #BCCCDC;
+    border-radius: 6px;
+    font-family: Consolas, 'Courier New', monospace;
+    font-size: 9.5pt;
+    padding: 8px;
+    resize: none;
+    outline: none;
+    overflow: auto;
+    white-space: pre;
+    line-height: 1.42;
+    user-select: text;
+  }
+
+  /* 우측 하단 : Envelop 분석 데이터 테이블 (stretch=2) */
+  .table-panel {
+    flex: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 340px;
+    overflow: hidden;
+  }
+  .q-tablewidget-container {
+    flex: 1;
+    background-color: #FFFFFF;
+    border: 1px solid #BCCCDC;
+    border-radius: 6px;
+    overflow: auto;
+    position: relative;
+    user-select: text;
+  }
+  .q-table {
+    border-collapse: collapse;
+    width: max-content;
+    min-width: 100%;
+    font-size: 8.5pt;
+    color: #1F2933;
+  }
+  .q-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    background-color: #F0F4F8;
+    color: #243B53;
+    font-weight: 700;
+    border-bottom: 1px solid #BCCCDC;
+    border-right: 1px solid #D9E2EC;
+    padding: 4px 8px;
+    text-align: center;
+    white-space: nowrap;
+  }
+  .q-table tbody td {
+    border-bottom: 1px solid #D9E2EC;
+    border-right: 1px solid #D9E2EC;
+    padding: 3px 8px;
+    white-space: nowrap;
+    text-align: right;
+    height: 22px;
+  }
+  .q-table tbody td.col-left {
+    text-align: left;
+  }
+  .q-table tbody td.col-center {
+    text-align: center;
+  }
+  .q-table tbody tr:hover td {
+    background-color: #F0F7FF;
+  }
+  .q-table tbody tr.row-fail td {
+    background-color: #FFF5F5;
+    color: #C53030;
+  }
+
+  /* 모달 다이얼로그 (QInputDialog / QMessageBox 재현) */
+  .modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.45);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 9999;
+  }
+  .modal-backdrop.show {
+    display: flex;
+  }
+  .q-dialog {
+    background-color: #F8FAFC;
+    border: 1px solid #9FB3C8;
+    border-radius: 8px;
+    box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25);
+    min-width: 340px;
+    max-width: 520px;
+    overflow: hidden;
+  }
+  .q-dialog-header {
+    background-color: #243B53;
+    color: #FFFFFF;
+    padding: 8px 12px;
+    font-weight: bold;
+    font-size: 9.5pt;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .q-dialog-body {
+    padding: 16px 16px 12px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    color: #1F2933;
+    font-size: 9.5pt;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+  .q-dialog-footer {
+    padding: 8px 16px 12px 16px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+  }
+  .q-btn-secondary {
+    background-color: #E2E8F0;
+    color: #1F2933;
+  }
+  .q-btn-secondary:hover:not(:disabled) {
+    background-color: #CBD5E1;
+  }
+
+  /* 로딩 오버레이 */
+  .loading-overlay {
+    position: fixed;
+    inset: 0;
+    background-color: rgba(15, 23, 42, 0.35);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    z-index: 10000;
+  }
+  .loading-overlay.show {
+    display: flex;
+  }
+  .loading-box {
+    background-color: #FFFFFF;
+    border: 1px solid #BCCCDC;
+    border-radius: 8px;
+    padding: 18px 26px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    min-width: 280px;
+  }
+  .spinner {
+    width: 28px;
+    height: 28px;
+    border: 3px solid #D9E2EC;
+    border-top-color: #2F80ED;
+    border-radius: 50%;
+    animation: spin 0.75s linear infinite;
+  }
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+</style>
+</head>
+<body>
+
+<!-- 상단 윈도우 타이틀 바 -->
+<div class="window-titlebar">
+  <div class="title-text">
+    <span>Comp Envelop Analyzer V3.0 ⚡ (Authored by JH Lee)</span>
+  </div>
+  <div class="window-controls">
+    <span class="win-dot" style="background:#F59E0B;"></span>
+    <span class="win-dot" style="background:#10B981;"></span>
+    <span class="win-dot" style="background:#EF4444;"></span>
+  </div>
+</div>
+
+<!-- 메인 레이아웃 -->
+<div class="main-container" id="mainContainer">
+
+  <!-- ===== 좌측 패널 : 컨트롤 및 설정 ===== -->
+  <div class="control-scroll" id="leftPanel">
+
+    <!-- 1. 데이터 로드 그룹박스 -->
+    <div class="q-groupbox">
+      <div class="q-groupbox-title">1. 데이터 로드</div>
+      <input type="file" id="csvFileInput" accept=".csv,text/csv" style="display:none;" />
+      <button type="button" class="q-btn" id="btnLoadCsv">CSV 파일 로드</button>
+      <div class="q-label status-label" id="lblCsvStatus">대기 중...</div>
+
+      <button type="button" class="q-btn" id="btnSelectComp">Comp 유형 선택</button>
+      <div class="q-label status-label" id="lblCompStatus">대기 중...</div>
+    </div>
+
+    <!-- 2. Envelop 분석 컬럼 선택 그룹박스 -->
+    <div class="q-groupbox">
+      <div class="q-groupbox-title">2. Envelop 분석 컬럼 선택</div>
+      <div id="columnSlotsContainer" style="display:flex; flex-direction:column; gap:4px;"></div>
+    </div>
+
+    <!-- 3. 설정 적용 및 분석 실행 버튼 -->
+    <button type="button" class="q-btn q-btn-run" id="btnRunAnalysis" disabled>설정 적용 및 분석 실행</button>
+
+    <!-- 4. 종료 버튼 -->
+    <button type="button" class="q-btn q-btn-exit" id="btnExit">❌ 종료</button>
+
+    <div style="flex:1;"></div>
+  </div>
+
+  <!-- 좌우 분할 스플리터 -->
+  <div class="splitter-handle" id="splitterHandle" title="드래그하여 좌측 패널 너비 조절"></div>
+
+  <!-- ===== 우측 패널 : 시각화 및 데이터 테이블 ===== -->
+  <div class="visual-panel">
+
+    <!-- 상단 정보 표시 + 그래프 저장 버튼 -->
+    <div class="info-layout">
+      <div class="info-item" id="lblFileTitle">File : -</div>
+      <div class="info-item" id="lblCompTitle">Comp Type : -</div>
+      <div class="info-item" id="lblResultTitle">Envelop Result : -</div>
+      <div class="info-spacer"></div>
+      <button type="button" class="q-btn btn-save-graph" id="btnSaveGraph" disabled>📷 Envelop 그래프 JPG 저장</button>
+    </div>
+
+    <!-- 상단 윈도우 : Envelop 그래프 출력 영역 (11:8 비율) -->
+    <div class="graph-section">
+      <div class="mpl-toolbar">
+        <button type="button" class="mpl-tool-btn" id="toolHome" title="원래 뷰로 복원 (Reset original view)">🏠 Home</button>
+        <button type="button" class="mpl-tool-btn" id="toolBack" title="이전 뷰 (Back)">⬅ Back</button>
+        <button type="button" class="mpl-tool-btn" id="toolForward" title="다음 뷰 (Forward)">➡ Forward</button>
+        <div class="mpl-sep"></div>
+        <button type="button" class="mpl-tool-btn" id="toolPan" title="드래그하여 이동 (Pan axes with left mouse)">✋ Pan</button>
+        <button type="button" class="mpl-tool-btn" id="toolZoom" title="드래그하여 영역 확대 (Zoom to rectangle)">🔍 Zoom</button>
+        <div class="mpl-sep"></div>
+        <button type="button" class="mpl-tool-btn" id="toolSave" title="그래프 이미지 저장 (Save the figure)">💾 Save</button>
+        <div class="mpl-coords" id="mplCoords"></div>
+      </div>
+      <div class="canvas-wrapper" id="canvasWrapper">
+        <canvas id="envelopCanvas"></canvas>
+      </div>
+    </div>
+
+    <!-- 하단 윈도우 : Data Analysis (좌) + Envelop 분석 데이터 테이블 (우) -->
+    <div class="bottom-layout">
+
+      <!-- [11단계] 좌측 하단 : Data Analysis -->
+      <div class="analysis-panel">
+        <div class="panel-header-row">
+          <span class="panel-title">Data Analysis</span>
+          <button type="button" class="q-btn btn-small-export" id="btnExportDashboard" disabled>CSV 내보내기</button>
+        </div>
+        <textarea class="q-textedit" id="txtAnalysisResult" readonly placeholder="CSV 파일 정보 및 Envelop Dashboard 결과가 여기에 표시됩니다."></textarea>
+      </div>
+
+      <!-- [12단계] 우측 하단 : Envelop 분석 데이터 테이블 -->
+      <div class="table-panel">
+        <div class="panel-header-row">
+          <span class="panel-title" id="lblTableTitle">Envelop 분석 데이터 테이블</span>
+          <button type="button" class="q-btn btn-small-export" id="btnExportData" disabled>CSV 내보내기</button>
+        </div>
+        <div class="q-tablewidget-container" id="tableContainer">
+          <table class="q-table" id="dataTable">
+            <thead id="dataTableHead"></thead>
+            <tbody id="dataTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- Comp 유형 선택 모달 (QInputDialog.getItem 재현) -->
+<div class="modal-backdrop" id="compDialogBackdrop">
+  <div class="q-dialog">
+    <div class="q-dialog-header">
+      <span>Comp 유형 선택</span>
+    </div>
+    <div class="q-dialog-body">
+      <div>분석할 Compressor 유형을 선택하세요.</div>
+      <select class="q-combobox" id="compDialogSelect">
+        <option value="Linear">Linear</option>
+        <option value="Inverter">Inverter</option>
+      </select>
+    </div>
+    <div class="q-dialog-footer">
+      <button type="button" class="q-btn" id="compDialogOk">OK</button>
+      <button type="button" class="q-btn q-btn-secondary" id="compDialogCancel">Cancel</button>
+    </div>
+  </div>
+</div>
+
+<!-- 메시지 박스 모달 (QMessageBox 재현) -->
+<div class="modal-backdrop" id="msgDialogBackdrop">
+  <div class="q-dialog">
+    <div class="q-dialog-header" id="msgDialogHeader">
+      <span id="msgDialogTitle">알림</span>
+    </div>
+    <div class="q-dialog-body" id="msgDialogBody"></div>
+    <div class="q-dialog-footer">
+      <button type="button" class="q-btn" id="msgDialogOk">OK</button>
+    </div>
+  </div>
+</div>
+
+<!-- 대용량 CSV 처리 중 로딩 표시 -->
+<div class="loading-overlay" id="loadingOverlay">
+  <div class="loading-box">
+    <div class="spinner"></div>
+    <div class="q-label" id="loadingText" style="font-weight:bold;">CSV 파일 처리 중...</div>
+  </div>
+</div>
+
+<script>
+// ==============================================================================
+// 상수 정의 : Comp 유형 / 분석 컬럼 슬롯 / 자동 인식용 JSON 코드 사전
+// ("01_REF_Envelop_Analyzer_1.py" 와 100% 동일)
+// ==============================================================================
+const COMP_LINEAR = 'Linear';
+const COMP_INVERTER = 'Inverter';
+
+const GRAPH_W = 11;
+const GRAPH_H = 8;
+const MAX_TABLE_ROWS = 20000;
+const VIRTUAL_ROW_HEIGHT = 22;
+
+const COLUMN_SLOTS = [
+  ['time',    '1) Time',        false],
+  ['power',   '2) Power',       false],
+  ['freq',    '3) Frequency',   false],
+  ['fheater', '4) F-Heater',    false],
+  ['cfan',    '5) C-FanOn',     false],
+  ['evain',   '6) Eva-In Temp', false],
+  ['hline',   '7) HLine Temp',  false],
+  ['valve',   '8) 3wayValve',   true],   // Linear 선택 시에만 노출
+];
+
+const AUTO_CODE_CANDIDATES = {
+  time:    ['CODE', 'Date', 'TIME'],
+  power:   ['1000_02_800', '1000_02_16', '1000_02_207', 'Watt'],
+  freq:    ['1000_01_257', '1000_02_110', '1000_02_210'],
+  fheater: ['1000_01_103'],
+  cfan:    ['1000_01_84'],
+  evain:   ['FEI'],
+  hline:   ['HLINE'],
+  valve:   ['1000_01_100'],
+};
+
+const POWER_FREQ_PAIR = {
+  '1000_02_800': '1000_01_257',
+  '1000_02_16':  '1000_02_110',
+  '1000_02_207': '1000_02_210',
+};
+
+class CompTypeError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = 'CompTypeError';
+  }
+}
+
+// ==============================================================================
+// 전역 애플리케이션 상태
+// ==============================================================================
+const state = {
+  currentFile: null,
+  fileName: null,
+  fileSizeMB: 0,
+  encoding: 'utf-8',
+  hasDescRow: false,
+  columns: [],            // 정규화된 컬럼명 배열
+  nameMap: {},            // {정규화된 코드 : 2행 실제 컬럼명}
+  rowCount: 0,            // 데이터 행 개수
+  fileInfoText: '',       // [4단계] csv 파일 정보 텍스트
+  compType: null,         // 'Linear' | 'Inverter'
+  columnCache: {},        // { colName: Array<string> | Float64Array }
+  resultDf: null,         // 분석 결과 객체 { columns, data, rowCount }
+  dashboardDf: null,      // Dashboard 1행 객체
+  summary: null,          // 분석 요약 객체
+
+  // 그래프 뷰포트 및 툴바 상태
+  plotSpec: null,         // 현재 그래프 데이터/범위 스펙
+  viewLimits: null,       // { xmin, xmax, ymin, ymax }
+  viewHistory: [],
+  viewHistoryIdx: -1,
+  activeTool: null,       // null | 'pan' | 'zoom'
+  dragState: null,
+  plotRect: null,         // 캔버스 내 실제 Plot Box 픽셀 영역
+};
+
+// DOM 참조 및 슬롯 콤보박스 생성
+const comboMap = {};
+const wrapperMap = {};
+
+function initColumnSlotsUI() {
+  const container = document.getElementById('columnSlotsContainer');
+  container.innerHTML = '';
+  for (const [key, title, linearOnly] of COLUMN_SLOTS) {
+    const wrap = document.createElement('div');
+    wrap.className = 'slot-wrapper' + (linearOnly ? ' hidden' : '');
+    const lbl = document.createElement('label');
+    lbl.className = 'slot-label';
+    lbl.textContent = `${title} 컬럼:`;
+    const sel = document.createElement('select');
+    sel.className = 'q-combobox';
+    sel.disabled = true;
+    wrap.appendChild(lbl);
+    wrap.appendChild(sel);
+    container.appendChild(wrap);
+    comboMap[key] = sel;
+    wrapperMap[key] = wrap;
+  }
+}
+
+// ==============================================================================
+// 모달 및 로딩 헬퍼
+// ==============================================================================
+function showLoading(text) {
+  document.getElementById('loadingText').textContent = text || '처리 중...';
+  document.getElementById('loadingOverlay').classList.add('show');
+}
+function hideLoading() {
+  document.getElementById('loadingOverlay').classList.remove('show');
+}
+
+function showMessageBox(title, message, type = 'info', onOk = null) {
+  const backdrop = document.getElementById('msgDialogBackdrop');
+  const header = document.getElementById('msgDialogHeader');
+  document.getElementById('msgDialogTitle').textContent = title;
+  document.getElementById('msgDialogBody').textContent = message;
+
+  if (type === 'error') {
+    header.style.backgroundColor = '#B42318';
+  } else if (type === 'warning') {
+    header.style.backgroundColor = '#B45309';
+  } else {
+    header.style.backgroundColor = '#243B53';
+  }
+
+  backdrop.classList.add('show');
+  const okBtn = document.getElementById('msgDialogOk');
+  const handler = () => {
+    backdrop.classList.remove('show');
+    okBtn.removeEventListener('click', handler);
+    if (onOk) onOk();
+  };
+  okBtn.addEventListener('click', handler);
+  okBtn.focus();
+}
+
+function openCompSelectDialog(defaultType) {
+  return new Promise((resolve) => {
+    const backdrop = document.getElementById('compDialogBackdrop');
+    const selectEl = document.getElementById('compDialogSelect');
+    const okBtn = document.getElementById('compDialogOk');
+    const cancelBtn = document.getElementById('compDialogCancel');
+
+    selectEl.value = (defaultType === COMP_INVERTER) ? COMP_INVERTER : COMP_LINEAR;
+    backdrop.classList.add('show');
+    selectEl.focus();
+
+    const cleanup = () => {
+      backdrop.classList.remove('show');
+      okBtn.removeEventListener('click', onOk);
+      cancelBtn.removeEventListener('click', onCancel);
+    };
+    const onOk = () => {
+      const val = selectEl.value;
+      cleanup();
+      resolve(val);
+    };
+    const onCancel = () => {
+      cleanup();
+      resolve(null);
+    };
+    okBtn.addEventListener('click', onOk);
+    cancelBtn.addEventListener('click', onCancel);
+  });
+}
+
+// ==============================================================================
+// CSV 파싱 및 정규화 유틸리티 (대용량 100MB+ CSV 스트리밍 지원 & CP949/UTF-8 자동 감지)
+// ==============================================================================
+function parseCsvLine(line) {
+  const result = [];
+  let cur = '';
+  let inQuotes = false;
+  const len = line.length;
+  for (let i = 0; i < len; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (i + 1 < len && line[i + 1] === '"') {
+          cur += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        cur += ch;
+      }
+    } else {
+      if (ch === '"') {
+        inQuotes = true;
+      } else if (ch === ',') {
+        result.push(cur);
+        cur = '';
+      } else {
+        cur += ch;
+      }
+    }
+  }
+  result.push(cur);
+  return result;
+}
+
+function normalizeColumns(rawHeader) {
+  const newCols = [];
+  const seen = {};
+  for (let i = 0; i < rawHeader.length; i++) {
+    let name = String(rawHeader[i] ?? '').replace(/ /g, '').replace(/\ufeff/g, '').trim();
+    if (Object.prototype.hasOwnProperty.call(seen, name)) {
+      seen[name] += 1;
+      name = `${name}.${seen[name]}`;
+    } else {
+      seen[name] = 0;
+    }
+    newCols.push(name);
+  }
+  return newCols;
+}
+
+function makeColumnLabel(code, nameMap) {
+  const real = nameMap[code];
+  if (real && real !== code) {
+    return `${code} : ${real}`;
+  }
+  return String(code);
+}
+
+// 문자열이 유효한 숫자인지 판별 (Pandas pd.to_numeric(errors='coerce') 와 동일 기준)
+function parseNumericFast(str) {
+  if (str === null || str === undefined) return NaN;
+  const s = str.trim();
+  if (s === '' || s.toLowerCase() === 'nan' || s.toLowerCase() === 'null') return NaN;
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+
+// 파일 인코딩 자동 감지 (UTF-8 vs CP949/EUC-KR)
+async function detectFileEncoding(file) {
+  const probeBlob = file.slice(0, Math.min(file.size, 65536));
+  const buf = await probeBlob.arrayBuffer();
+  try {
+    const dec = new TextDecoder('utf-8', { fatal: true });
+    dec.decode(buf);
+    return 'utf-8';
+  } catch (e) {
+    return 'euc-kr';
+  }
+}
+
+// 파일 스트리밍 라인 리더 (16MB 청크 단위로 읽어 메모리 폭주 방지)
+async function streamFileLines(file, encoding, onLine) {
+  const CHUNK_SIZE = 16 * 1024 * 1024;
+  const decoder = new TextDecoder(encoding);
+  let offset = 0;
+  let leftover = '';
+  let lineIndex = 0;
+
+  while (offset < file.size) {
+    const slice = file.slice(offset, Math.min(offset + CHUNK_SIZE, file.size));
+    const buf = await slice.arrayBuffer();
+    offset += buf.byteLength;
+    const isLast = offset >= file.size;
+    const chunkStr = decoder.decode(buf, { stream: !isLast });
+    const combined = leftover + chunkStr;
+
+    let start = 0;
+    const len = combined.length;
+    for (let i = 0; i < len; i++) {
+      const c = combined.charCodeAt(i);
+      if (c === 10) { // '\n'
+        let lineEnd = i;
+        if (lineEnd > start && combined.charCodeAt(lineEnd - 1) === 13) {
+          lineEnd--;
+        }
+        onLine(combined.slice(start, lineEnd), lineIndex++);
+        start = i + 1;
+      }
+    }
+    leftover = combined.slice(start);
+  }
+
+  if (leftover.length > 0) {
+    if (leftover.charCodeAt(leftover.length - 1) === 13) {
+      leftover = leftover.slice(0, -1);
+    }
+    if (leftover.length > 0) {
+      onLine(leftover, lineIndex++);
+    }
+  }
+}
+
+// ==============================================================================
+// CSV 전체 스캔 + 파일 요약(summarize_csv) + 주요 후보 컬럼 캐싱
+// ==============================================================================
+async function processCsvFile(file) {
+  const encoding = await detectFileEncoding(file);
+  let rawHeader = null;
+  let columns = [];
+  let nameMap = {};
+  let hasDescRow = false;
+
+  // 통계 집계용 TypedArray / 배열
+  let numCols = 0;
+  let nonNullCount = null;
+  let numValidCount = null;
+  let isAllInt = null;
+  let uniqueState = null; // 0: 없음, 1: 1개, 2: 2개 이상
+  let firstVal = null;
+  let naCount = null;
+  let naFirst5 = null;
+
+  // 자주 쓰이는 후보 컬럼들은 1차 스캔 시 바로 메모리에 캐시
+  const preloadColSet = new Set(['REI']);
+  for (const arr of Object.values(AUTO_CODE_CANDIDATES)) {
+    for (const c of arr) preloadColSet.add(c);
+  }
+  let preloadByCol = null;
+  let dataRowCount = 0;
+
+  const initStatsAndCache = (cols) => {
+    numCols = cols.length;
+    nonNullCount = new Int32Array(numCols);
+    numValidCount = new Int32Array(numCols);
+    isAllInt = new Uint8Array(numCols);
+    isAllInt.fill(1);
+    uniqueState = new Uint8Array(numCols);
+    firstVal = new Array(numCols).fill(null);
+    naCount = new Int32Array(numCols);
+    naFirst5 = Array.from({ length: numCols }, () => []);
+
+    preloadIndices = [];
+    preloadByCol = new Array(numCols).fill(null);
+    const timeCandidates = new Set(AUTO_CODE_CANDIDATES.time);
+    for (let idx = 0; idx < numCols; idx++) {
+      const cName = cols[idx];
+      if (preloadColSet.has(cName)) {
+        const item = {
+          colIdx: idx,
+          colName: cName,
+          isTime: timeCandidates.has(cName),
+          arr: []
+        };
+        preloadIndices.push(item);
+        preloadByCol[idx] = item;
+      }
+    }
+  };
+
+  const processDataRow = (line, rowIdx) => {
+    const hasQuote = line.indexOf('"') !== -1;
+    let fields = null;
+    if (hasQuote) {
+      fields = parseCsvLine(line);
+    }
+
+    let pos = 0;
+    const lineLen = line.length;
+
+    for (let colIdx = 0; colIdx < numCols; colIdx++) {
+      let s = 0, e = 0;
+      let srcStr = line;
+
+      if (hasQuote) {
+        srcStr = colIdx < fields.length ? fields[colIdx] : '';
+        s = 0;
+        e = srcStr.length;
+      } else {
+        if (pos <= lineLen) {
+          const nextComma = line.indexOf(',', pos);
+          if (nextComma === -1) {
+            s = pos;
+            e = lineLen;
+            pos = lineLen + 1;
+          } else {
+            s = pos;
+            e = nextComma;
+            pos = nextComma + 1;
+          }
+        } else {
+          s = 0;
+          e = 0;
+        }
+      }
+
+      // 앞뒤 공백 제거 (문자열 할당 없이 인덱스만 이동)
+      while (s < e && srcStr.charCodeAt(s) <= 32) s++;
+      while (e > s && srcStr.charCodeAt(e - 1) <= 32) e--;
+      const spanLen = e - s;
+
+      let isNa = (spanLen === 0);
+      if (!isNa && (spanLen === 3 || spanLen === 4)) {
+        const c0 = srcStr.charCodeAt(s) | 32;
+        if (c0 === 110) { // 'n' or 'N'
+          const subLower = srcStr.slice(s, e).toLowerCase();
+          if (subLower === 'nan' || subLower === 'null') isNa = true;
+        }
+      }
+
+      const preloadItem = preloadByCol[colIdx];
+
+      if (isNa) {
+        naCount[colIdx]++;
+        if (naFirst5[colIdx].length < 5) {
+          naFirst5[colIdx].push(rowIdx + 1);
+        }
+        if (preloadItem !== null) {
+          preloadItem.arr.push(preloadItem.isTime ? '' : NaN);
+        }
+      } else {
+        nonNullCount[colIdx]++;
+        const uState = uniqueState[colIdx];
+        if (uState === 0) {
+          firstVal[colIdx] = srcStr.slice(s, e);
+          uniqueState[colIdx] = 1;
+        } else if (uState === 1) {
+          const fv = firstVal[colIdx];
+          if (fv.length !== spanLen || !srcStr.startsWith(fv, s)) {
+            uniqueState[colIdx] = 2;
+          }
+        }
+
+        // 빠른 숫자/정수 판별 (문자열 할당 최소화)
+        let i = s;
+        const firstCh = srcStr.charCodeAt(i);
+        if (firstCh === 45 || firstCh === 43) i++; // '-' or '+'
+        let intDigits = 0;
+        let fracDigits = 0;
+        let nonZeroFrac = false;
+        let hasDot = false;
+        let needFallback = false;
+        let validNum = true;
+
+        for (; i < e; i++) {
+          const c = srcStr.charCodeAt(i);
+          if (c >= 48 && c <= 57) {
+            if (!hasDot) intDigits++;
+            else {
+              fracDigits++;
+              if (c !== 48) nonZeroFrac = true;
+            }
+          } else if (c === 46 && !hasDot) {
+            hasDot = true;
+          } else if (c === 69 || c === 101) { // 'E' or 'e'
+            needFallback = true;
+            break;
+          } else {
+            validNum = false;
+            break;
+          }
+        }
+
+        let isNum = false;
+        let isInt = false;
+        if (needFallback) {
+          const numVal = Number(srcStr.slice(s, e));
+          isNum = Number.isFinite(numVal);
+          isInt = isNum && (numVal % 1 === 0);
+        } else {
+          isNum = validNum && (intDigits + fracDigits > 0);
+          isInt = isNum && (!nonZeroFrac);
+        }
+
+        if (isNum) {
+          numValidCount[colIdx]++;
+          if (isAllInt[colIdx] === 1 && !isInt) {
+            isAllInt[colIdx] = 0;
+          }
+        }
+
+        if (preloadItem !== null) {
+          const sliceStr = srcStr.slice(s, e);
+          if (preloadItem.isTime) {
+            preloadItem.arr.push(sliceStr);
+          } else {
+            preloadItem.arr.push(isNum ? Number(sliceStr) : NaN);
+          }
+        }
+      }
+    }
+
+    dataRowCount++;
+  };
+
+  await streamFileLines(file, encoding, (line, lineIdx) => {
+    if (line.trim() === '') return;
+    if (lineIdx === 0) {
+      rawHeader = parseCsvLine(line);
+      columns = normalizeColumns(rawHeader);
+      initStatsAndCache(columns);
+      return;
+    }
+    if (lineIdx === 1) {
+      const secondRow = parseCsvLine(line);
+      // 2행 숫자 비율 확인 (read_envelop_csv & read_header_name_map 동일 로직)
+      let numCnt = 0;
+      for (let i = 0; i < secondRow.length; i++) {
+        const v = String(secondRow[i] ?? '').trim();
+        if (v !== '' && Number.isFinite(Number(v))) {
+          numCnt++;
+        }
+      }
+      const numericRatio = secondRow.length > 0 ? (numCnt / secondRow.length) : 0;
+      if (numericRatio < 0.5) {
+        hasDescRow = true;
+        for (let i = 0; i < columns.length; i++) {
+          const real = i < secondRow.length ? String(secondRow[i]).trim() : '';
+          if (real && real.toLowerCase() !== 'nan') {
+            nameMap[columns[i]] = real;
+          }
+        }
+        return; // 설명 행이므로 데이터에서 제외
+      }
+    }
+    processDataRow(line, dataRowCount);
+  });
+
+  // summarize_csv 결과 생성
+  let intCols = 0, floatCols = 0, strCols = 0;
+  let sameColsCount = 0;
+  let nanColsCount = 0;
+  const missingDetail = [];
+
+  for (let i = 0; i < numCols; i++) {
+    const nn = nonNullCount[i];
+    const nv = numValidCount[i];
+    if (nn > 0 && nv === nn) {
+      if (isAllInt[i] === 1) intCols++;
+      else floatCols++;
+    } else {
+      strCols++;
+    }
+    if (uniqueState[i] <= 1) {
+      sameColsCount++;
+    }
+    if (naCount[i] > 0) {
+      nanColsCount++;
+      const preview = naFirst5[i].join(', ');
+      const more = naCount[i] > 5 ? ' ...' : '';
+      missingDetail.push(`      · "${columns[i]}" : row ${preview}${more} (총 ${naCount[i].toLocaleString()}개)`);
+    }
+  }
+
+  const sizeMb = file.size / (1024 * 1024);
+  const lines = [];
+  lines.push('□ csv 파일 정보');
+  lines.push(`  - 파일명 : ${file.name}`);
+  lines.push(`  - Column : Total(${numCols.toLocaleString()}개), Int(${intCols.toLocaleString()}개), Float(${floatCols.toLocaleString()}개), String(${strCols.toLocaleString()}개), 동일 데이터(${sameColsCount.toLocaleString()}개), NaN(${nanColsCount.toLocaleString()}개)`);
+  lines.push(`  - Row : ${dataRowCount.toLocaleString()}`);
+  if (missingDetail.length > 0) {
+    lines.push(`  - 결측치 : ${nanColsCount.toLocaleString()}개 컬럼`);
+    lines.push(...missingDetail.slice(0, 10));
+    if (missingDetail.length > 10) {
+      lines.push(`      · 외 ${(missingDetail.length - 10).toLocaleString()}개 컬럼`);
+    }
+  } else {
+    lines.push('  - 결측치 : 없음');
+  }
+  lines.push(`  - File Size : ${sizeMb.toFixed(2)} MB`);
+
+  const columnCache = {};
+  for (const item of preloadIndices) {
+    columnCache[item.colName] = item.isTime ? item.arr : Float64Array.from(item.arr);
+  }
+
+  return {
+    encoding,
+    hasDescRow,
+    columns,
+    nameMap,
+    rowCount: dataRowCount,
+    fileInfoText: lines.join('\n'),
+    columnCache,
+  };
+}
+
+function extractNthFieldFast(line, targetIdx) {
+  let pos = 0;
+  const len = line.length;
+  for (let i = 0; i < targetIdx; i++) {
+    const next = line.indexOf(',', pos);
+    if (next === -1) return '';
+    pos = next + 1;
+  }
+  const end = line.indexOf(',', pos);
+  return end === -1 ? line.slice(pos) : line.slice(pos, end);
+}
+
+// 사용자가 수동으로 선택한 컬럼이 캐시에 없을 경우 해당 컬럼만 파일에서 즉시 로드
+async function ensureColumnsLoaded(colNames, timeColName) {
+  const needed = [];
+  for (const c of colNames) {
+    if (!c) continue;
+    const wantString = (c === timeColName);
+    const cached = state.columnCache[c];
+    if (!cached || (wantString && !(cached instanceof Array)) || (!wantString && !(cached instanceof Float64Array))) {
+      const idx = state.columns.indexOf(c);
+      if (idx !== -1) {
+        needed.push({ colName: c, colIdx: idx, isTime: wantString, arr: [] });
+      }
+    }
+  }
+  if (needed.length === 0) return;
+
+  await streamFileLines(state.currentFile, state.encoding, (line, lineIdx) => {
+    if (line.trim() === '') return;
+    if (lineIdx === 0) return;
+    if (lineIdx === 1 && state.hasDescRow) return;
+
+    const hasQuote = line.indexOf('"') !== -1;
+    const fields = hasQuote ? parseCsvLine(line) : null;
+    for (let i = 0; i < needed.length; i++) {
+      const item = needed[i];
+      const raw = hasQuote
+        ? (item.colIdx < fields.length ? fields[item.colIdx] : '')
+        : extractNthFieldFast(line, item.colIdx);
+      if (item.isTime) {
+        item.arr.push(raw.trim());
+      } else {
+        item.arr.push(parseNumericFast(raw));
+      }
+    }
+  });
+
+  for (const item of needed) {
+    state.columnCache[item.colName] = item.isTime ? item.arr : Float64Array.from(item.arr);
+  }
+}
+
+// ==============================================================================
+// auto_detect_columns & check_comp_format (원본 Python 로직 100% 재현)
+// ==============================================================================
+function autoDetectColumns(columns, compType) {
+  const colSet = new Set(columns);
+  const detected = {};
+
+  let powerPick = null;
+  for (const cand of AUTO_CODE_CANDIDATES.power) {
+    if (colSet.has(cand)) {
+      if (compType === COMP_INVERTER && cand !== '1000_02_207') continue;
+      if (compType === COMP_LINEAR && cand === '1000_02_207') continue;
+      powerPick = cand;
+      break;
+    }
+  }
+  if (powerPick === null) {
+    powerPick = colSet.has('Watt') ? 'Watt' : null;
+  }
+  detected.power = powerPick;
+
+  let freqPick = POWER_FREQ_PAIR[powerPick] || null;
+  if (!freqPick || !colSet.has(freqPick)) {
+    freqPick = AUTO_CODE_CANDIDATES.freq.find(c => colSet.has(c)) || null;
+  }
+  detected.freq = freqPick;
+
+  for (const key of ['time', 'fheater', 'cfan', 'evain', 'hline', 'valve']) {
+    detected[key] = AUTO_CODE_CANDIDATES[key].find(c => colSet.has(c)) || null;
+  }
+  return detected;
+}
+
+function checkCompFormat(columns, compType) {
+  const cols = new Set(columns);
+  const isLinearFormat = cols.has('1000_01_100') && (cols.has('1000_02_800') || cols.has('1000_02_16'));
+  const isInverterFormat = cols.has('1000_02_207') && cols.has('1000_02_210');
+
+  if (compType === COMP_LINEAR && isInverterFormat && !isLinearFormat) {
+    throw new CompTypeError('로드한 CSV 는 Inverter Comp 데이터 포맷입니다.');
+  }
+  if (compType === COMP_INVERTER && isLinearFormat && !isInverterFormat) {
+    throw new CompTypeError('로드한 CSV 는 Linear Comp 데이터 포맷입니다.');
+  }
+}
+
+// ==============================================================================
+// 압력 환산식 / 시간 파싱 / Door Open Fail / Fail 구간 추출
+// ==============================================================================
+function calcPressure(x) {
+  if (Number.isNaN(x)) return NaN;
+  const x2 = x * x;
+  const x3 = x2 * x;
+  const x4 = x3 * x;
+  const x5 = x4 * x;
+  return (1.909e-12 * x5 + 4.33198e-10 * x4 + 4.45188e-7 * x3 +
+          7.6282e-5 * x2 + 5.56711e-3 * x + 0.156327185) * 1.03323 / 0.10132;
+}
+
+// 날짜 문자열 파싱 -> { valid, formatted: 'YYYY-MM-DD HH:MM:SS', secOfDay }
+function parseDateTimeInfo(rawStr) {
+  if (!rawStr) return { valid: false, formatted: '', secOfDay: -1 };
+  const s = String(rawStr).trim();
+  // 빠른 정규식 매칭: YYYY-MM-DD HH:MM(:SS) 또는 YYYY/MM/DD HH:MM(:SS)
+  const m = /^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})\s+(\d{1,2}):(\d{1,2})(?::(\d{1,2}))?/.exec(s);
+  if (m) {
+    const yyyy = m[1];
+    const mm = m[2].padStart(2, '0');
+    const dd = m[3].padStart(2, '0');
+    const hh = parseInt(m[4], 10);
+    const mi = parseInt(m[5], 10);
+    const ss = m[6] ? parseInt(m[6], 10) : 0;
+    const hhStr = String(hh).padStart(2, '0');
+    const miStr = String(mi).padStart(2, '0');
+    const ssStr = String(ss).padStart(2, '0');
+    return {
+      valid: true,
+      formatted: `${yyyy}-${mm}-${dd} ${hhStr}:${miStr}:${ssStr}`,
+      secOfDay: hh * 3600 + mi * 60 + ss,
+    };
+  }
+  const d = new Date(s);
+  if (!Number.isNaN(d.getTime())) {
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    const hh = d.getHours();
+    const mi = d.getMinutes();
+    const ss = d.getSeconds();
+    return {
+      valid: true,
+      formatted: `${yyyy}-${mm}-${dd} ${String(hh).padStart(2, '0')}:${String(mi).padStart(2, '0')}:${String(ss).padStart(2, '0')}`,
+      secOfDay: hh * 3600 + mi * 60 + ss,
+    };
+  }
+  return { valid: false, formatted: s, secOfDay: -1 };
+}
+
+function isDoorOpenWindow(secOfDay) {
+  if (secOfDay < 0) return false;
+  // 08:00:00 (28800) ~ 09:50:00 (35400)
+  // 13:00:00 (46800) ~ 14:30:00 (52200)
+  // 17:30:00 (63000) ~ 18:50:00 (67800)
+  return (
+    (secOfDay >= 28800 && secOfDay <= 35400) ||
+    (secOfDay >= 46800 && secOfDay <= 52200) ||
+    (secOfDay >= 63000 && secOfDay <= 67800)
+  );
+}
+
+function formatTimestampList(dates) {
+  if (!dates || dates.length === 0) return '[]';
+  return '[' + dates.map(d => `Timestamp('${d}')`).join(', ') + ']';
+}
+
+// ==============================================================================
+// build_work_frame + analyze_linear / analyze_inverter (원본과 100% 동일한 연산)
+// ==============================================================================
+function buildWorkFrame(sel, compType) {
+  const missing = [];
+  for (const [key, , linearOnly] of COLUMN_SLOTS) {
+    if (linearOnly && compType !== COMP_LINEAR) continue;
+    if (!sel[key]) missing.push(key);
+  }
+  if (missing.length > 0) {
+    if (missing.includes('valve')) {
+      throw new CompTypeError('3WayValve 컬럼을 선택할 수 없습니다.');
+    }
+    throw new Error(`분석 컬럼이 선택되지 않았습니다 : ${missing.join(', ')}`);
+  }
+
+  const N = state.rowCount;
+  const rawTime = state.columnCache[sel.time];
+  const dateFormatted = new Array(N);
+  const secOfDayArr = new Int32Array(N);
+  let validDateCnt = 0;
+
+  for (let i = 0; i < N; i++) {
+    const info = parseDateTimeInfo(rawTime[i]);
+    if (info.valid) validDateCnt++;
+    dateFormatted[i] = info.formatted;
+    secOfDayArr[i] = info.secOfDay;
+  }
+  if (validDateCnt === 0) {
+    throw new Error(`선택한 Time 컬럼('${sel.time}')을 날짜/시간으로 변환할 수 없습니다.`);
+  }
+
+  const Power = state.columnCache[sel.power];
+  const Freq = state.columnCache[sel.freq];
+  const F_Heater = state.columnCache[sel.fheater];
+  const CFanOn = state.columnCache[sel.cfan];
+  const FEI = state.columnCache[sel.evain];
+  const HL = state.columnCache[sel.hline];
+
+  const Time_sec = new Int32Array(N);
+  for (let i = 0; i < N; i++) Time_sec[i] = i * 6;
+
+  let Valve = null;
+  let REI = null;
+  if (compType === COMP_LINEAR) {
+    Valve = state.columnCache[sel.valve];
+    REI = state.columns.includes('REI') && state.columnCache['REI']
+      ? state.columnCache['REI']
+      : FEI;
+  }
+
+  return {
+    N,
+    Date: dateFormatted,
+    secOfDayArr,
+    Time_sec,
+    Power,
+    Freq,
+    F_Heater,
+    CFanOn,
+    FEI,
+    REI,
+    HL,
+    Valve,
+  };
+}
+
+function analyzeLinear(sel, fileName) {
+  checkCompFormat(state.columns, COMP_LINEAR);
+  const w = buildWorkFrame(sel, COMP_LINEAR);
+  const N = w.N;
+
+  let valveValid = 0;
+  for (let i = 0; i < N; i++) {
+    if (!Number.isNaN(w.Valve[i])) valveValid++;
+  }
+  if (valveValid === 0) {
+    throw new CompTypeError('3WayValve 데이터가 존재하지 않습니다.');
+  }
+
+  const Ps = new Float64Array(N);
+  const Pd = new Float64Array(N);
+  const Judgement = new Array(N).fill(null);
+  let validCount = 0;
+  let psMin = Infinity;
+  let pdMax = -Infinity;
+
+  for (let i = 0; i < N; i++) {
+    const v = w.Valve[i];
+    const inVal = (v === 0 || v === 1 || v === 2) ? w.FEI[i] : w.REI[i];
+    const ps = calcPressure(inVal);
+    const pd = calcPressure(w.HL[i]);
+    Ps[i] = ps;
+    Pd[i] = pd;
+    if (!Number.isNaN(ps) && ps < psMin) psMin = ps;
+    if (!Number.isNaN(pd) && pd > pdMax) pdMax = pd;
+
+    const freq = w.Freq[i];
+    const power = w.Power[i];
+    const isValid = (!Number.isNaN(freq)) && (!Number.isNaN(power)) && (freq !== 0) && (power !== 0) && (pd >= ps);
+    if (isValid) {
+      validCount++;
+      const condGood = (ps > 0.38) && (pd <= 11.11) && (pd <= 5.22 * ps + 7.456) && (pd <= 15.85814 - 2.37407 * ps);
+      const condPdown = (v === 2) && (ps >= 0.2) && (ps <= 0.38) && (pd >= 4.0) && (pd <= 8.5);
+      if (condGood) {
+        Judgement[i] = 'Good';
+      } else if (condPdown) {
+        Judgement[i] = 'P_Down';
+      } else {
+        Judgement[i] = 'Fail';
+      }
+    }
+  }
+
+  if (validCount === 0) {
+    throw new CompTypeError('Comp 운전(Power/Freq) 유효 데이터가 없습니다.');
+  }
+
+  // 제상 후 초기 Comp 기동 구간(300개 행 = 30분)을 '1st_Comp_Defrost' 로 마킹
+  for (let i = 1; i < N; i++) {
+    const fhPrev = w.F_Heater[i - 1];
+    const fhCur = w.F_Heater[i];
+    const pwr = w.Power[i];
+    if (fhPrev === 0 && fhCur === 1 && pwr !== 0 && !Number.isNaN(pwr)) {
+      const endIdx = Math.min(i + 299, N - 1);
+      for (let k = i; k <= endIdx; k++) {
+        Judgement[k] = '1st_Comp_Defrost';
+      }
+    }
+  }
+
+  const Result = new Float64Array(N);
+  const Door_Open_Fail = new Int32Array(N);
+  let failCount = 0;
+  let pumpDownCount = 0;
+  let doorOpenFailCount = 0;
+  const judgementCounts = {};
+  const failStartDates = [];
+  const failEndDates = [];
+
+  for (let i = 0; i < N; i++) {
+    const j = Judgement[i];
+    if (j !== null) {
+      judgementCounts[j] = (judgementCounts[j] || 0) + 1;
+      if (j === 'P_Down') pumpDownCount++;
+    }
+    const res = (j === 'Fail') ? 1.0 : 0.0;
+    Result[i] = res;
+    if (res === 1.0) {
+      failCount++;
+      if (isDoorOpenWindow(w.secOfDayArr[i])) {
+        Door_Open_Fail[i] = 1;
+        doorOpenFailCount++;
+      }
+    }
+    if (i > 0) {
+      const prevRes = Result[i - 1];
+      if (prevRes === 0.0 && res === 1.0) failStartDates.push(w.Date[i]);
+      if (prevRes === 1.0 && res === 0.0) failEndDates.push(w.Date[i]);
+    }
+  }
+
+  const psMinRound = Number(psMin.toFixed(2));
+  const pdMaxRound = Number(pdMax.toFixed(2));
+  const envelopResult = (failCount === 0) ? 'Pass' : 'Fail';
+
+  const dashboardDf = {
+    columns: [
+      'File_Name', 'Item_11', 'L_Envelop_Result', 'L_Envelop_Fail_Count',
+      'L_Envelop_Fail_Start_Date', 'L_Envelop_Fail_End_Date', 'L_Ps_Min', 'L_Pd_Max'
+    ],
+    row: {
+      File_Name: fileName,
+      Item_11: 'Linear_Envelop',
+      L_Envelop_Result: envelopResult,
+      L_Envelop_Fail_Count: failCount,
+      L_Envelop_Fail_Start_Date: formatTimestampList(failStartDates),
+      L_Envelop_Fail_End_Date: formatTimestampList(failEndDates),
+      L_Ps_Min: psMinRound,
+      L_Pd_Max: pdMaxRound,
+    }
+  };
+
+  const resultDf = {
+    rowCount: N,
+    columns: [
+      'Date', 'Time_sec', 'Power', 'Freq', 'F_Heater', '3WayValve', 'FEI', 'REI',
+      'HL', 'C-FanOn', 'Ps', 'Pd', 'Judgement', 'Result', 'Door_Open_Fail'
+    ],
+    colsData: {
+      'Date': w.Date,
+      'Time_sec': w.Time_sec,
+      'Power': w.Power,
+      'Freq': w.Freq,
+      'F_Heater': w.F_Heater,
+      '3WayValve': w.Valve,
+      'FEI': w.FEI,
+      'REI': w.REI,
+      'HL': w.HL,
+      'C-FanOn': w.CFanOn,
+      'Ps': Ps,
+      'Pd': Pd,
+      'Judgement': Judgement,
+      'Result': Result,
+      'Door_Open_Fail': Door_Open_Fail,
+    }
+  };
+
+  const summary = {
+    Envelop_Result: envelopResult,
+    Envelop_Fail_Count: failCount,
+    PumpDown_Count: pumpDownCount,
+    Valid_Count: validCount,
+    Door_Open_Fail_Count: doorOpenFailCount,
+    Ps_Min: psMinRound,
+    Pd_Max: pdMaxRound,
+    Judgement_Counts: judgementCounts,
+  };
+
+  return { resultDf, dashboardDf, summary };
+}
+
+function analyzeInverter(sel, fileName) {
+  checkCompFormat(state.columns, COMP_INVERTER);
+  const w = buildWorkFrame(sel, COMP_INVERTER);
+  const N = w.N;
+
+  const Ps = new Float64Array(N);
+  const Pd = new Float64Array(N);
+  const Judgement = new Array(N).fill(null);
+  let validCount = 0;
+  let psMin = Infinity;
+  let pdMax = -Infinity;
+  const freqUniqueSet = new Set();
+  let freqMax = -Infinity;
+
+  for (let i = 0; i < N; i++) {
+    const ps = calcPressure(w.FEI[i]);
+    const pd = calcPressure(w.HL[i]);
+    Ps[i] = ps;
+    Pd[i] = pd;
+    if (!Number.isNaN(ps) && ps < psMin) psMin = ps;
+    if (!Number.isNaN(pd) && pd > pdMax) pdMax = pd;
+
+    const freq = w.Freq[i];
+    const power = w.Power[i];
+    const isValid = (!Number.isNaN(freq)) && (freq !== 0) && (power !== 0) && (!Number.isNaN(power)) && (pd >= ps);
+    if (isValid) {
+      validCount++;
+      if (freqUniqueSet.size <= 5) freqUniqueSet.add(freq);
+      if (freq > freqMax) freqMax = freq;
+
+      const lowGood = (freq < 42) && (ps > 0.38) && (pd < 8.9) &&
+                      (pd < 5.22 * ps + 7.456) && (pd <= 16.333 - 0.33331 * ps);
+      const highGood = (freq >= 42) && (freq <= 75) && (ps >= 0.38) && (pd <= 11.1) &&
+                       (pd < 5.22 * ps + 7.456) && (pd <= 16.333 - 0.33331 * ps);
+      if (lowGood) {
+        Judgement[i] = 'Low_Good';
+      } else if (highGood) {
+        Judgement[i] = 'High_Good';
+      } else {
+        Judgement[i] = 'Fail';
+      }
+    }
+  }
+
+  if (validCount === 0) {
+    throw new CompTypeError('Comp 운전(Power/Freq) 유효 데이터가 없습니다.');
+  }
+  if (freqUniqueSet.size <= 2 && freqMax <= 1) {
+    throw new CompTypeError('선택한 Frequency 데이터가 Inverter 운전 주파수 형태가 아닙니다.');
+  }
+
+  // 제상 종료 후 첫 Comp 기동 구간(Power 가 0 이 될 때까지)을 '1st_Comp_Defrost' 로 마킹
+  const powerOffIndices = [];
+  for (let i = 0; i < N; i++) {
+    if (w.Power[i] === 0) powerOffIndices.push(i);
+  }
+  if (powerOffIndices.length > 0) {
+    for (let i = 1; i < N; i++) {
+      const fhPrev = w.F_Heater[i - 1];
+      const fhCur = w.F_Heater[i];
+      const pwr = w.Power[i];
+      if (fhPrev === 0 && fhCur === 1 && pwr !== 0 && !Number.isNaN(pwr)) {
+        // 이진 탐색 (np.searchsorted 동일)
+        let lo = 0, hi = powerOffIndices.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >> 1;
+          if (powerOffIndices[mid] < i) lo = mid + 1;
+          else hi = mid;
+        }
+        if (lo < powerOffIndices.length) {
+          const endIdx = powerOffIndices[lo];
+          for (let k = i; k <= endIdx; k++) {
+            Judgement[k] = '1st_Comp_Defrost';
+          }
+        }
+      }
+    }
+  }
+
+  const Result = new Float64Array(N);
+  const Door_Open_Fail = new Int32Array(N);
+  let failCount = 0;
+  let doorOpenFailCount = 0;
+  const judgementCounts = {};
+  const failStartDates = [];
+  const failEndDates = [];
+
+  for (let i = 0; i < N; i++) {
+    const j = Judgement[i];
+    if (j !== null) {
+      judgementCounts[j] = (judgementCounts[j] || 0) + 1;
+    }
+    const res = (j === 'Fail') ? 1.0 : 0.0;
+    Result[i] = res;
+    if (res === 1.0) {
+      failCount++;
+      if (isDoorOpenWindow(w.secOfDayArr[i])) {
+        Door_Open_Fail[i] = 1;
+        doorOpenFailCount++;
+      }
+    }
+    if (i > 0) {
+      const prevRes = Result[i - 1];
+      if (prevRes === 0.0 && res === 1.0) failStartDates.push(w.Date[i]);
+      if (prevRes === 1.0 && res === 0.0) failEndDates.push(w.Date[i]);
+    }
+  }
+
+  const psMinRound = Number(psMin.toFixed(2));
+  const pdMaxRound = Number(pdMax.toFixed(2));
+  const envelopResult = (failCount === 0) ? 'Pass' : 'Fail';
+
+  const dashboardDf = {
+    columns: [
+      'File_Name', 'Item_12', 'I_Envelop_Result', 'I_Envelop_Fail_Count',
+      'I_Envelop_Fail_Start_Date', 'I_Envelop_Fail_End_Date', 'I_Ps_Min', 'I_Pd_Max'
+    ],
+    row: {
+      File_Name: fileName,
+      Item_12: 'Inverter_Envelop',
+      I_Envelop_Result: envelopResult,
+      I_Envelop_Fail_Count: failCount,
+      I_Envelop_Fail_Start_Date: formatTimestampList(failStartDates),
+      I_Envelop_Fail_End_Date: formatTimestampList(failEndDates),
+      I_Ps_Min: psMinRound,
+      I_Pd_Max: pdMaxRound,
+    }
+  };
+
+  const resultDf = {
+    rowCount: N,
+    columns: [
+      'Date', 'Time_sec', 'Power', 'Freq', 'F_Heater', 'C-FanOn', 'EI', 'HL',
+      'Ps', 'Pd', 'Judgement', 'Result', 'Door_Open_Fail'
+    ],
+    colsData: {
+      'Date': w.Date,
+      'Time_sec': w.Time_sec,
+      'Power': w.Power,
+      'Freq': w.Freq,
+      'F_Heater': w.F_Heater,
+      'C-FanOn': w.CFanOn,
+      'EI': w.FEI,
+      'HL': w.HL,
+      'Ps': Ps,
+      'Pd': Pd,
+      'Judgement': Judgement,
+      'Result': Result,
+      'Door_Open_Fail': Door_Open_Fail,
+    }
+  };
+
+  const summary = {
+    Envelop_Result: envelopResult,
+    Envelop_Fail_Count: failCount,
+    Valid_Count: validCount,
+    Door_Open_Fail_Count: doorOpenFailCount,
+    Ps_Min: psMinRound,
+    Pd_Max: pdMaxRound,
+    Judgement_Counts: judgementCounts,
+  };
+
+  return { resultDf, dashboardDf, summary };
+}
+
+// ==============================================================================
+// Envelop 그래프 렌더링 엔진 (Matplotlib 11:8 Plot Box 비율 & 스타일 완벽 재현)
+// ==============================================================================
+function buildPlotSpec(compType, resultDf, fileName) {
+  const N = resultDf.rowCount;
+  const Ps = resultDf.colsData['Ps'];
+  const Pd = resultDf.colsData['Pd'];
+  const Judgement = resultDf.colsData['Judgement'];
+
+  if (compType === COMP_LINEAR) {
+    const ptsGood = [], ptsPD = [], ptsFC = [], ptsFail = [];
+    for (let i = 0; i < N; i++) {
+      const j = Judgement[i];
+      if (!j) continue;
+      const x = Ps[i], y = Pd[i];
+      if (Number.isNaN(x) || Number.isNaN(y)) continue;
+      if (j === 'Good') ptsGood.push(x, y);
+      else if (j === 'P_Down') ptsPD.push(x, y);
+      else if (j === '1st_Comp_Defrost') ptsFC.push(x, y);
+      else if (j === 'Fail') ptsFail.push(x, y);
+    }
+    return {
+      compType,
+      title: `Linear Envelop : ${fileName}`,
+      defaultLimits: { xmin: 0.0, xmax: 5.0, ymin: 0.0, ymax: 14.0 },
+      xStep: 1.0,
+      yStep: 2.0,
+      lines: [
+        { x: [0.38, 4.7, 2.0, 0.7, 0.38, 0.38], y: [0.38, 4.7, 11.11, 11.11, 8.5, 0.38] },
+        { x: [0.38, 0.2, 0.2, 0.38],            y: [8.5, 8.5, 4.0, 4.0] }
+      ],
+      scatters: [
+        { coords: ptsGood, color: '#ADD8E6', alpha: 1.0, legendAlpha: 1.0, label: 'Pass' },
+        { coords: ptsPD,   color: '#008000', alpha: 1.0, legendAlpha: 1.0, label: 'PumpDown' },
+        { coords: ptsFC,   color: '#808080', alpha: 0.8, legendAlpha: 0.8, label: '1st_Comp_Defrost' },
+        { coords: ptsFail, color: '#FF0000', alpha: 1.0, legendAlpha: 1.0, label: 'Fail' },
+      ]
+    };
+  } else {
+    const ptsLG = [], ptsHG = [], ptsFC = [], ptsFail = [];
+    for (let i = 0; i < N; i++) {
+      const j = Judgement[i];
+      if (!j) continue;
+      const x = Ps[i], y = Pd[i];
+      if (Number.isNaN(x) || Number.isNaN(y)) continue;
+      if (j === 'Low_Good') ptsLG.push(x, y);
+      else if (j === 'High_Good') ptsHG.push(x, y);
+      else if (j === '1st_Comp_Defrost') ptsFC.push(x, y);
+      else if (j === 'Fail') ptsFail.push(x, y);
+    }
+    return {
+      compType,
+      title: `Inverter_Envelop : ${fileName}`,
+      defaultLimits: { xmin: 0.0, xmax: 4.5, ymin: 0.0, ymax: 14.0 },
+      xStep: 0.5,
+      yStep: 1.0,
+      lines: [
+        { x: [0.38, 4.0, 1.3, 0.7, 0.38, 0.38], y: [0.38, 4.0, 11.1, 11.1, 6.2, 0.38] },
+        { x: [1.3, 1.3, 0.56, 2.14],            y: [1.3, 8.9, 8.9, 8.9] }
+      ],
+      scatters: [
+        { coords: ptsLG,   color: '#0000FF', alpha: 0.3, legendAlpha: 1.0, label: 'Freq_Low(42Hz↓)_Good' },
+        { coords: ptsHG,   color: '#008000', alpha: 1.0, legendAlpha: 1.0, label: 'Freq_High(42~75Hz)_Good' },
+        { coords: ptsFC,   color: '#808080', alpha: 0.3, legendAlpha: 0.3, label: 'Defrost_On + 1st_Comp_On' },
+        { coords: ptsFail, color: '#FF0000', alpha: 1.0, legendAlpha: 1.0, label: 'Envelop_Fail' },
+      ]
+    };
+  }
+}
+
+function renderEnvelopCanvas(targetCtx, width, height, dpr = 1) {
+  const ctx = targetCtx;
+  ctx.save();
+  ctx.scale(dpr, dpr);
+
+  // 배경 흰색
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0, 0, width, height);
+
+  // 여백 및 11:8 Plot Box 계산 (set_box_aspect(8/11) 적용)
+  const padLeft = 68;
+  const padRight = 24;
+  const padTop = 42;
+  const padBottom = 52;
+  const availW = Math.max(100, width - padLeft - padRight);
+  const availH = Math.max(80, height - padTop - padBottom);
+
+  let boxW = availW;
+  let boxH = boxW * (GRAPH_H / GRAPH_W);
+  if (boxH > availH) {
+    boxH = availH;
+    boxW = boxH * (GRAPH_W / GRAPH_H);
+  }
+  const boxX = padLeft + (availW - boxW) / 2;
+  const boxY = padTop + (availH - boxH) / 2;
+
+  if (targetCtx === document.getElementById('envelopCanvas').getContext('2d')) {
+    state.plotRect = { x: boxX, y: boxY, w: boxW, h: boxH };
+  }
+
+  const spec = state.plotSpec;
+  const lim = state.viewLimits || (spec ? spec.defaultLimits : { xmin: 0.0, xmax: 1.0, ymin: 0.0, ymax: 1.0 });
+  const xSpan = lim.xmax - lim.xmin;
+  const ySpan = lim.ymax - lim.ymin;
+
+  const toPxX = (x) => boxX + ((x - lim.xmin) / xSpan) * boxW;
+  const toPxY = (y) => boxY + boxH - ((y - lim.ymin) / ySpan) * boxH;
+
+  // 틱 생성
+  const xStep = spec ? spec.xStep : 0.2;
+  const yStep = spec ? spec.yStep : 0.2;
+  const xTicks = [];
+  const firstX = Math.ceil((lim.xmin - 1e-9) / xStep) * xStep;
+  for (let v = firstX; v <= lim.xmax + 1e-9; v += xStep) {
+    xTicks.push(Number(v.toFixed(4)));
+  }
+  const yTicks = [];
+  const firstY = Math.ceil((lim.ymin - 1e-9) / yStep) * yStep;
+  for (let v = firstY; v <= lim.ymax + 1e-9; v += yStep) {
+    yTicks.push(Number(v.toFixed(4)));
+  }
+
+  // 그리드
+  if (spec) {
+    ctx.strokeStyle = '#D9E2EC';
+    ctx.lineWidth = 0.8;
+    for (const xv of xTicks) {
+      const px = toPxX(xv);
+      ctx.beginPath();
+      ctx.moveTo(px, boxY);
+      ctx.lineTo(px, boxY + boxH);
+      ctx.stroke();
+    }
+    for (const yv of yTicks) {
+      const py = toPxY(yv);
+      ctx.beginPath();
+      ctx.moveTo(boxX, py);
+      ctx.lineTo(boxX + boxW, py);
+      ctx.stroke();
+    }
+  }
+
+  // Plot 영역 클리핑 후 산점도 & 경계선 렌더링
+  if (spec) {
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(boxX, boxY, boxW, boxH);
+    ctx.clip();
+
+    // 산점도 (s=10 -> 반지름 약 2.2px)
+    const radius = Math.max(1.8, Math.min(2.6, boxW / 240));
+    for (const sc of spec.scatters) {
+      const pts = sc.coords;
+      if (pts.length === 0) continue;
+      ctx.fillStyle = sc.color;
+      ctx.globalAlpha = sc.alpha;
+      ctx.beginPath();
+      for (let i = 0; i < pts.length; i += 2) {
+        const px = toPxX(pts[i]);
+        const py = toPxY(pts[i + 1]);
+        ctx.moveTo(px + radius, py);
+        ctx.arc(px, py, radius, 0, Math.PI * 2);
+      }
+      ctx.fill();
+    }
+    ctx.globalAlpha = 1.0;
+
+    // 파란색 Envelop 경계선 (lw=2)
+    ctx.strokeStyle = '#0000FF';
+    ctx.lineWidth = 2.0;
+    ctx.lineJoin = 'round';
+    for (const ln of spec.lines) {
+      ctx.beginPath();
+      for (let i = 0; i < ln.x.length; i++) {
+        const px = toPxX(ln.x[i]);
+        const py = toPxY(ln.y[i]);
+        if (i === 0) ctx.moveTo(px, py);
+        else ctx.lineTo(px, py);
+      }
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  // 외곽 테두리
+  ctx.strokeStyle = '#1F2933';
+  ctx.lineWidth = 1.1;
+  ctx.strokeRect(boxX, boxY, boxW, boxH);
+
+  // 축 눈금 및 숫자 라벨
+  ctx.fillStyle = '#1F2933';
+  ctx.strokeStyle = '#1F2933';
+  ctx.lineWidth = 1.0;
+  ctx.font = "13px 'Malgun Gothic', sans-serif";
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'top';
+
+  for (const xv of xTicks) {
+    const px = toPxX(xv);
+    ctx.beginPath();
+    ctx.moveTo(px, boxY + boxH);
+    ctx.lineTo(px, boxY + boxH + 5);
+    ctx.stroke();
+    const lbl = (spec && spec.xStep === 0.5) ? xv.toFixed(1) : String(xv);
+    ctx.fillText(lbl, px, boxY + boxH + 7);
+  }
+
+  ctx.textAlign = 'right';
+  ctx.textBaseline = 'middle';
+  for (const yv of yTicks) {
+    const py = toPxY(yv);
+    ctx.beginPath();
+    ctx.moveTo(boxX - 5, py);
+    ctx.lineTo(boxX, py);
+    ctx.stroke();
+    const lbl = (!spec) ? yv.toFixed(1) : String(yv);
+    ctx.fillText(lbl, boxX - 8, py);
+  }
+
+  // 타이틀 및 축 제목
+  if (spec) {
+    ctx.fillStyle = '#111827';
+    ctx.font = "bold 15px 'Malgun Gothic', sans-serif";
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText(spec.title, boxX + boxW / 2, boxY - 10);
+
+    ctx.font = "14px 'Malgun Gothic', sans-serif";
+    ctx.textBaseline = 'top';
+    ctx.fillText('Ps (kgf/cm^2)', boxX + boxW / 2, boxY + boxH + 28);
+
+    ctx.save();
+    ctx.translate(boxX - 44, boxY + boxH / 2);
+    ctx.rotate(-Math.PI / 2);
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'bottom';
+    ctx.fillText('Pd (kgf/cm^2)', 0, 0);
+    ctx.restore();
+
+    // 범례 (loc='upper right')
+    ctx.font = "11.5px 'Malgun Gothic', sans-serif";
+    let maxLabelW = 0;
+    for (const sc of spec.scatters) {
+      const w = ctx.measureText(sc.label).width;
+      if (w > maxLabelW) maxLabelW = w;
+    }
+    const legW = maxLabelW + 38;
+    const rowH = 19;
+    const legH = spec.scatters.length * rowH + 10;
+    const legX = boxX + boxW - legW - 8;
+    const legY = boxY + 8;
+
+    ctx.fillStyle = 'rgba(255, 255, 255, 0.88)';
+    ctx.strokeStyle = '#CBD5E1';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.roundRect(legX, legY, legW, legH, 4);
+    ctx.fill();
+    ctx.stroke();
+
+    ctx.textAlign = 'left';
+    ctx.textBaseline = 'middle';
+    for (let i = 0; i < spec.scatters.length; i++) {
+      const sc = spec.scatters[i];
+      const cy = legY + 5 + i * rowH + rowH / 2;
+      ctx.save();
+      ctx.fillStyle = sc.color;
+      ctx.globalAlpha = sc.legendAlpha;
+      ctx.beginPath();
+      ctx.arc(legX + 14, cy, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
+      ctx.fillStyle = '#1F2933';
+      ctx.fillText(sc.label, legX + 26, cy);
+    }
+  }
+
+  // Zoom 드래그 사각형 표시
+  if (state.dragState && state.dragState.mode === 'zoom') {
+    const d = state.dragState;
+    const rx = Math.min(d.startX, d.curX);
+    const ry = Math.min(d.startY, d.curY);
+    const rw = Math.abs(d.curX - d.startX);
+    const rh = Math.abs(d.curY - d.startY);
+    ctx.strokeStyle = '#2F80ED';
+    ctx.lineWidth = 1.2;
+    ctx.setLineDash([4, 3]);
+    ctx.strokeRect(rx, ry, rw, rh);
+    ctx.fillStyle = 'rgba(47, 128, 237, 0.12)';
+    ctx.fillRect(rx, ry, rw, rh);
+  }
+
+  ctx.restore();
+}
+
+function redrawMainCanvas() {
+  const wrapper = document.getElementById('canvasWrapper');
+  const canvas = document.getElementById('envelopCanvas');
+  const rect = wrapper.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = Math.max(200, Math.floor(rect.width));
+  const h = Math.max(160, Math.floor(rect.height));
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  const ctx = canvas.getContext('2d');
+  renderEnvelopCanvas(ctx, w, h, dpr);
+}
+
+// ==============================================================================
+// NavigationToolbar 상호작용 (Home, Back, Forward, Pan, Zoom, Save)
+// ==============================================================================
+function pushViewHistory(lim) {
+  state.viewHistory = state.viewHistory.slice(0, state.viewHistoryIdx + 1);
+  state.viewHistory.push({ ...lim });
+  state.viewHistoryIdx = state.viewHistory.length - 1;
+}
+
+function initGraphToolbar() {
+  const btnHome = document.getElementById('toolHome');
+  const btnBack = document.getElementById('toolBack');
+  const btnForward = document.getElementById('toolForward');
+  const btnPan = document.getElementById('toolPan');
+  const btnZoom = document.getElementById('toolZoom');
+  const btnSave = document.getElementById('toolSave');
+  const canvas = document.getElementById('envelopCanvas');
+  const coordsEl = document.getElementById('mplCoords');
+
+  const updateActiveButtons = () => {
+    btnPan.classList.toggle('active', state.activeTool === 'pan');
+    btnZoom.classList.toggle('active', state.activeTool === 'zoom');
+    canvas.style.cursor = state.activeTool === 'pan' ? 'grab' : (state.activeTool === 'zoom' ? 'crosshair' : 'default');
+  };
+
+  btnHome.addEventListener('click', () => {
+    if (!state.plotSpec) return;
+    state.viewLimits = { ...state.plotSpec.defaultLimits };
+    pushViewHistory(state.viewLimits);
+    redrawMainCanvas();
+  });
+
+  btnBack.addEventListener('click', () => {
+    if (state.viewHistoryIdx > 0) {
+      state.viewHistoryIdx--;
+      state.viewLimits = { ...state.viewHistory[state.viewHistoryIdx] };
+      redrawMainCanvas();
+    }
+  });
+
+  btnForward.addEventListener('click', () => {
+    if (state.viewHistoryIdx < state.viewHistory.length - 1) {
+      state.viewHistoryIdx++;
+      state.viewLimits = { ...state.viewHistory[state.viewHistoryIdx] };
+      redrawMainCanvas();
+    }
+  });
+
+  btnPan.addEventListener('click', () => {
+    state.activeTool = state.activeTool === 'pan' ? null : 'pan';
+    updateActiveButtons();
+  });
+
+  btnZoom.addEventListener('click', () => {
+    state.activeTool = state.activeTool === 'zoom' ? null : 'zoom';
+    updateActiveButtons();
+  });
+
+  btnSave.addEventListener('click', () => {
+    if (state.plotSpec) saveGraphJpg();
+  });
+
+  canvas.addEventListener('mousedown', (e) => {
+    if (!state.plotSpec || !state.activeTool || !state.plotRect) return;
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+    state.dragState = {
+      mode: state.activeTool,
+      startX: x,
+      startY: y,
+      curX: x,
+      curY: y,
+      origLimits: { ...state.viewLimits }
+    };
+  });
+
+  window.addEventListener('mousemove', (e) => {
+    const r = canvas.getBoundingClientRect();
+    const x = e.clientX - r.left;
+    const y = e.clientY - r.top;
+
+    if (state.plotSpec && state.plotRect && state.viewLimits) {
+      const pr = state.plotRect;
+      if (x >= pr.x && x <= pr.x + pr.w && y >= pr.y && y <= pr.y + pr.h) {
+        const vx = state.viewLimits.xmin + ((x - pr.x) / pr.w) * (state.viewLimits.xmax - state.viewLimits.xmin);
+        const vy = state.viewLimits.ymin + ((pr.y + pr.h - y) / pr.h) * (state.viewLimits.ymax - state.viewLimits.ymin);
+        coordsEl.textContent = `Ps=${vx.toFixed(2)}, Pd=${vy.toFixed(2)}`;
+      } else {
+        coordsEl.textContent = '';
+      }
+    }
+
+    if (!state.dragState || !state.plotRect) return;
+    state.dragState.curX = x;
+    state.dragState.curY = y;
+
+    if (state.dragState.mode === 'pan') {
+      const pr = state.plotRect;
+      const orig = state.dragState.origLimits;
+      const dxData = ((x - state.dragState.startX) / pr.w) * (orig.xmax - orig.xmin);
+      const dyData = ((y - state.dragState.startY) / pr.h) * (orig.ymax - orig.ymin);
+      state.viewLimits = {
+        xmin: orig.xmin - dxData,
+        xmax: orig.xmax - dxData,
+        ymin: orig.ymin + dyData,
+        ymax: orig.ymax + dyData,
+      };
+      redrawMainCanvas();
+    } else if (state.dragState.mode === 'zoom') {
+      redrawMainCanvas();
+    }
+  });
+
+  window.addEventListener('mouseup', () => {
+    if (!state.dragState) return;
+    const d = state.dragState;
+    state.dragState = null;
+
+    if (d.mode === 'pan') {
+      pushViewHistory(state.viewLimits);
+    } else if (d.mode === 'zoom' && state.plotRect) {
+      const pr = state.plotRect;
+      const x0 = Math.max(pr.x, Math.min(d.startX, d.curX));
+      const x1 = Math.min(pr.x + pr.w, Math.max(d.startX, d.curX));
+      const y0 = Math.max(pr.y, Math.min(d.startY, d.curY));
+      const y1 = Math.min(pr.y + pr.h, Math.max(d.startY, d.curY));
+      if (x1 - x0 > 6 && y1 - y0 > 6) {
+        const orig = d.origLimits;
+        const nXmin = orig.xmin + ((x0 - pr.x) / pr.w) * (orig.xmax - orig.xmin);
+        const nXmax = orig.xmin + ((x1 - pr.x) / pr.w) * (orig.xmax - orig.xmin);
+        const nYmax = orig.ymin + ((pr.y + pr.h - y0) / pr.h) * (orig.ymax - orig.ymin);
+        const nYmin = orig.ymin + ((pr.y + pr.h - y1) / pr.h) * (orig.ymax - orig.ymin);
+        state.viewLimits = { xmin: nXmin, xmax: nXmax, ymin: nYmin, ymax: nYmax };
+        pushViewHistory(state.viewLimits);
+      }
+      redrawMainCanvas();
+    }
+  });
+}
+
+// ==============================================================================
+// [11단계] Data Analysis 텍스트 생성 & [12단계] 가상 스크롤 테이블 렌더링
+// ==============================================================================
+function makeAnalysisText(dashboardDf, summary, sel) {
+  const lines = [];
+  lines.push(state.fileInfoText);
+  lines.push('');
+  lines.push('□ 선택 컬럼 (Envelop 분석 입력)');
+  for (const [key, title] of COLUMN_SLOTS) {
+    if (Object.prototype.hasOwnProperty.call(sel, key)) {
+      lines.push(`  - ${title} : ${makeColumnLabel(sel[key], state.nameMap)}`);
+    }
+  }
+  lines.push('');
+  lines.push(`□ ${state.compType} Envelop Dashboard`);
+  for (const col of dashboardDf.columns) {
+    lines.push(`  - ${col} : ${dashboardDf.row[col]}`);
+  }
+  lines.push('');
+  lines.push('□ 판정 집계 (Judgement)');
+  const entries = Object.entries(summary.Judgement_Counts).sort((a, b) => b[1] - a[1]);
+  for (const [k, v] of entries) {
+    lines.push(`  - ${k} : ${v.toLocaleString()}건`);
+  }
+  lines.push(`  - 유효 운전 데이터 : ${summary.Valid_Count.toLocaleString()}건`);
+  lines.push(`  - Door Open 구간 Fail : ${summary.Door_Open_Fail_Count.toLocaleString()}건`);
+  if (Object.prototype.hasOwnProperty.call(summary, 'PumpDown_Count')) {
+    lines.push(`  - PumpDown_Count : ${summary.PumpDown_Count.toLocaleString()}건`);
+  }
+  return lines.join('\n');
+}
+
+// 20,000행 가상 스크롤(Virtual Scroll) 테이블 렌더링
+function renderTable(resultDf) {
+  const container = document.getElementById('tableContainer');
+  const thead = document.getElementById('dataTableHead');
+  const tbody = document.getElementById('dataTableBody');
+  const totalDisplayRows = Math.min(resultDf.rowCount, MAX_TABLE_ROWS);
+
+  document.getElementById('lblTableTitle').textContent =
+    `Envelop 분석 데이터 테이블 (표시: ${totalDisplayRows.toLocaleString()} / 전체: ${resultDf.rowCount.toLocaleString()}행)`;
+
+  thead.innerHTML = '';
+  const trHead = document.createElement('tr');
+  for (const col of resultDf.columns) {
+    const th = document.createElement('th');
+    th.textContent = col;
+    trHead.appendChild(th);
+  }
+  thead.appendChild(trHead);
+
+  const isFloatCol = {};
+  for (const col of resultDf.columns) {
+    if (col === 'Date' || col === 'Judgement' || col === 'Time_sec' || col === 'Door_Open_Fail') {
+      isFloatCol[col] = false;
+    } else if (col === 'Ps' || col === 'Pd' || col === 'Result') {
+      isFloatCol[col] = true;
+    } else {
+      // pd.to_numeric 결과와 동일하게 컬럼 내 소수 또는 NaN 존재 시 float64, 모두 정수이면 int64로 판별
+      const arr = resultDf.colsData[col];
+      let hasFloatOrNaN = false;
+      for (let i = 0; i < resultDf.rowCount; i++) {
+        const v = arr[i];
+        if (Number.isNaN(v) || (v % 1 !== 0)) {
+          hasFloatOrNaN = true;
+          break;
+        }
+      }
+      isFloatCol[col] = hasFloatOrNaN;
+    }
+  }
+
+  const formatCell = (col, val) => {
+    if (val === null || val === undefined || (typeof val === 'number' && Number.isNaN(val))) return '';
+    if (col === 'Date' || col === 'Judgement') return String(val);
+    if (isFloatCol[col] && typeof val === 'number') {
+      return val.toLocaleString('en-US', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    }
+    return String(val);
+  };
+
+  const renderVisibleWindow = () => {
+    const scrollTop = container.scrollTop;
+    const viewH = container.clientHeight || 220;
+    const buffer = 15;
+    const startIdx = Math.max(0, Math.floor(scrollTop / VIRTUAL_ROW_HEIGHT) - buffer);
+    const visibleCnt = Math.ceil(viewH / VIRTUAL_ROW_HEIGHT) + buffer * 2;
+    const endIdx = Math.min(totalDisplayRows, startIdx + visibleCnt);
+
+    const topPad = startIdx * VIRTUAL_ROW_HEIGHT;
+    const bottomPad = Math.max(0, (totalDisplayRows - endIdx) * VIRTUAL_ROW_HEIGHT);
+
+    const frag = document.createDocumentFragment();
+    if (topPad > 0) {
+      const trTop = document.createElement('tr');
+      const tdTop = document.createElement('td');
+      tdTop.colSpan = resultDf.columns.length;
+      tdTop.style.height = topPad + 'px';
+      tdTop.style.padding = '0';
+      tdTop.style.border = 'none';
+      trTop.appendChild(tdTop);
+      frag.appendChild(trTop);
+    }
+
+    for (let r = startIdx; r < endIdx; r++) {
+      const tr = document.createElement('tr');
+      if (resultDf.colsData['Result'][r] === 1) {
+        tr.className = 'row-fail';
+      }
+      for (const col of resultDf.columns) {
+        const td = document.createElement('td');
+        if (col === 'Date') td.className = 'col-left';
+        else if (col === 'Judgement') td.className = 'col-center';
+        td.textContent = formatCell(col, resultDf.colsData[col][r]);
+        tr.appendChild(td);
+      }
+      frag.appendChild(tr);
+    }
+
+    if (bottomPad > 0) {
+      const trBot = document.createElement('tr');
+      const tdBot = document.createElement('td');
+      tdBot.colSpan = resultDf.columns.length;
+      tdBot.style.height = bottomPad + 'px';
+      tdBot.style.padding = '0';
+      tdBot.style.border = 'none';
+      trBot.appendChild(tdBot);
+      frag.appendChild(trBot);
+    }
+
+    tbody.innerHTML = '';
+    tbody.appendChild(frag);
+  };
+
+  container.onscroll = renderVisibleWindow;
+  container.scrollTop = 0;
+  renderVisibleWindow();
+}
+
+// ==============================================================================
+// CSV 내보내기 (Dashboard CSV / 전체 데이터 CSV) & 그래프 JPG(300dpi급) 저장
+// ==============================================================================
+function escapeCsvCell(val) {
+  if (val === null || val === undefined || (typeof val === 'number' && Number.isNaN(val))) return '';
+  const s = String(val);
+  if (s.includes(',') || s.includes('"') || s.includes('\n')) {
+    return '"' + s.replace(/"/g, '""') + '"';
+  }
+  return s;
+}
+
+function exportDashboardCsv() {
+  if (!state.dashboardDf) return;
+  const baseName = state.fileName.replace(/\.[^/.]+$/, '');
+  const outName = `${baseName}_${state.compType}_Envelop_Dashboard.csv`;
+
+  const cols = state.dashboardDf.columns;
+  const headerLine = cols.map(escapeCsvCell).join(',');
+  const rowLine = cols.map(c => escapeCsvCell(state.dashboardDf.row[c])).join(',');
+  const csvContent = '\ufeff' + headerLine + '\r\n' + rowLine + '\r\n';
+
+  const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+  triggerDownload(blob, outName);
+  showMessageBox('저장 완료', `Envelop Dashboard 를 저장했습니다.\n\n${outName}`);
+}
+
+function exportFullDataCsv() {
+  if (!state.resultDf) return;
+  const baseName = state.fileName.replace(/\.[^/.]+$/, '');
+  const outName = `${baseName}_${state.compType}_Envelop_Data.csv`;
+
+  showLoading('Envelop 분석 데이터 CSV 생성 중...');
+  setTimeout(() => {
+    try {
+      const df = state.resultDf;
+      const cols = df.columns;
+      const N = df.rowCount;
+      const isFloatCol = {};
+      for (const col of cols) {
+        if (col === 'Date' || col === 'Judgement' || col === 'Time_sec' || col === 'Door_Open_Fail') {
+          isFloatCol[col] = false;
+        } else if (col === 'Ps' || col === 'Pd' || col === 'Result') {
+          isFloatCol[col] = true;
+        } else {
+          const arr = df.colsData[col];
+          let hasFloatOrNaN = false;
+          for (let i = 0; i < N; i++) {
+            const v = arr[i];
+            if (Number.isNaN(v) || (v % 1 !== 0)) {
+              hasFloatOrNaN = true;
+              break;
+            }
+          }
+          isFloatCol[col] = hasFloatOrNaN;
+        }
+      }
+      const chunks = ['\ufeff' + cols.join(',') + '\r\n'];
+
+      const BATCH = 5000;
+      for (let start = 0; start < N; start += BATCH) {
+        const end = Math.min(N, start + BATCH);
+        const lines = new Array(end - start);
+        for (let r = start; r < end; r++) {
+          const rowVals = new Array(cols.length);
+          for (let c = 0; c < cols.length; c++) {
+            const colName = cols[c];
+            const v = df.colsData[colName][r];
+            if (isFloatCol[colName] && typeof v === 'number' && !Number.isNaN(v) && Number.isInteger(v)) {
+              rowVals[c] = v.toFixed(1);
+            } else {
+              rowVals[c] = escapeCsvCell(v);
+            }
+          }
+          lines[r - start] = rowVals.join(',');
+        }
+        chunks.push(lines.join('\r\n') + '\r\n');
+      }
+
+      const blob = new Blob(chunks, { type: 'text/csv;charset=utf-8;' });
+      hideLoading();
+      triggerDownload(blob, outName);
+      showMessageBox('저장 완료', `Envelop 분석 데이터를 저장했습니다.\n\n${outName}`);
+    } catch (e) {
+      hideLoading();
+      showMessageBox('저장 오류', `CSV 저장 중 오류가 발생했습니다.\n\n${e.message}`, 'error');
+    }
+  }, 30);
+}
+
+function saveGraphJpg() {
+  if (!state.resultDf || !state.plotSpec) return;
+  const baseName = state.fileName.replace(/\.[^/.]+$/, '');
+  const outName = `${baseName}_${state.compType}_Envelop_graph.jpg`;
+
+  // figsize=(11, 8) 고해상도 JPG 생성
+  const offCanvas = document.createElement('canvas');
+  const w = 1100;
+  const h = 800;
+  const scale = 2; // 2200 x 1600 고해상도
+  offCanvas.width = w * scale;
+  offCanvas.height = h * scale;
+  const ctx = offCanvas.getContext('2d');
+  renderEnvelopCanvas(ctx, w, h, scale);
+
+  offCanvas.toBlob((blob) => {
+    if (!blob) return;
+    triggerDownload(blob, outName);
+    showMessageBox('저장 완료', `Envelop 그래프를 저장했습니다.\n\n${outName}`);
+  }, 'image/jpeg', 0.96);
+}
+
+function triggerDownload(blob, fileName) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = fileName;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+}
+
+// ==============================================================================
+// 컨트롤 패널 동작 : CSV 파일 로드 / Comp 유형 선택 / 컬럼 콤보 구성 / 분석 실행
+// ==============================================================================
+function populateColumnCombos() {
+  const columns = state.columns;
+  const detected = autoDetectColumns(columns, state.compType);
+
+  for (const [key, , linearOnly] of COLUMN_SLOTS) {
+    const combo = comboMap[key];
+    const wrap = wrapperMap[key];
+    const visible = (!linearOnly) || (state.compType === COMP_LINEAR);
+    wrap.classList.toggle('hidden', !visible);
+
+    combo.innerHTML = '';
+    const frag = document.createDocumentFragment();
+    for (let i = 0; i < columns.length; i++) {
+      const col = columns[i];
+      const display = makeColumnLabel(col, state.nameMap);
+      const opt = document.createElement('option');
+      opt.value = col;
+      opt.textContent = display;
+      opt.title = display;
+      frag.appendChild(opt);
+    }
+    combo.appendChild(frag);
+
+    const autoCol = detected[key];
+    if (autoCol && columns.includes(autoCol)) {
+      combo.value = autoCol;
+    }
+    combo.disabled = !visible;
+  }
+}
+
+function getSelectedColumns() {
+  const sel = {};
+  for (const [key, , linearOnly] of COLUMN_SLOTS) {
+    if (linearOnly && state.compType !== COMP_LINEAR) continue;
+    sel[key] = comboMap[key].value || null;
+  }
+  return sel;
+}
+
+async function handleSelectCompType() {
+  if (!state.currentFile || state.columns.length === 0) {
+    showMessageBox('데이터 없음', '먼저 "CSV 파일 로드" 버튼으로 CSV 파일을 로드해 주세요.', 'warning');
+    return;
+  }
+
+  const chosen = await openCompSelectDialog(state.compType);
+  if (!chosen) return;
+
+  state.compType = chosen;
+  document.getElementById('lblCompStatus').textContent = `✅ ${chosen} Comp 선택 완료`;
+  document.getElementById('lblCompTitle').textContent = `Comp Type : ${chosen}`;
+  populateColumnCombos();
+  document.getElementById('btnRunAnalysis').disabled = false;
+
+  document.getElementById('txtAnalysisResult').value =
+    `${state.fileInfoText}\n` +
+    `  - Comp 유형 : ${chosen}\n\n` +
+    `▶ 좌측 "2. Envelop 분석 컬럼 선택"의 컬럼을 확인한 뒤 "설정 적용 및 분석 실행" 버튼을 눌러 주세요.`;
+}
+
+async function handleRunAnalysis() {
+  if (!state.currentFile || !state.compType) {
+    showMessageBox('설정 미완료', 'CSV 파일 로드와 Comp 유형 선택을 먼저 완료해 주세요.', 'warning');
+    return;
+  }
+
+  const sel = getSelectedColumns();
+  const neededCols = Object.values(sel).filter(Boolean);
+  if (state.compType === COMP_LINEAR && state.columns.includes('REI')) {
+    neededCols.push('REI');
+  }
+
+  showLoading('Envelop 분석 및 그래프 생성 중...');
+  await new Promise(r => setTimeout(r, 20));
+
+  try {
+    await ensureColumnsLoaded(neededCols, sel.time);
+
+    let out;
+    if (state.compType === COMP_LINEAR) {
+      out = analyzeLinear(sel, state.fileName);
+    } else {
+      out = analyzeInverter(sel, state.fileName);
+    }
+
+    state.resultDf = out.resultDf;
+    state.dashboardDf = out.dashboardDf;
+    state.summary = out.summary;
+
+    state.plotSpec = buildPlotSpec(state.compType, out.resultDf, state.fileName);
+    state.viewLimits = { ...state.plotSpec.defaultLimits };
+    state.viewHistory = [{ ...state.viewLimits }];
+    state.viewHistoryIdx = 0;
+
+    redrawMainCanvas();
+    renderTable(out.resultDf);
+    document.getElementById('txtAnalysisResult').value =
+      makeAnalysisText(out.dashboardDf, out.summary, sel);
+
+    document.getElementById('lblResultTitle').textContent =
+      `Envelop Result : ${out.summary.Envelop_Result} (Fail ${out.summary.Envelop_Fail_Count.toLocaleString()}건)`;
+
+    document.getElementById('btnExportData').disabled = false;
+    document.getElementById('btnExportDashboard').disabled = false;
+    document.getElementById('btnSaveGraph').disabled = false;
+    hideLoading();
+
+  } catch (e) {
+    hideLoading();
+    if (e instanceof CompTypeError) {
+      showMessageBox(
+        'Comp 선택 오류',
+        `Comp 선택 오류입니다. 다시 선택해 주세요.\n\n(상세 : ${e.message})`,
+        'warning',
+        () => { handleSelectCompType(); }
+      );
+    } else {
+      showMessageBox('분석 오류', `분석 중 오류가 발생했습니다.\n\n${e.message}`, 'error');
+    }
+  }
+}
+
+// ==============================================================================
+// 초기화 및 이벤트 바인딩
+// ==============================================================================
+function initSplitter() {
+  const handle = document.getElementById('splitterHandle');
+  const leftPanel = document.getElementById('leftPanel');
+  let dragging = false;
+
+  handle.addEventListener('mousedown', () => {
+    dragging = true;
+    handle.classList.add('dragging');
+  });
+  window.addEventListener('mousemove', (e) => {
+    if (!dragging) return;
+    const newW = Math.max(280, Math.min(520, e.clientX - 6));
+    leftPanel.style.width = newW + 'px';
+    redrawMainCanvas();
+  });
+  window.addEventListener('mouseup', () => {
+    if (dragging) {
+      dragging = false;
+      handle.classList.remove('dragging');
+    }
+  });
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  initColumnSlotsUI();
+  initGraphToolbar();
+  initSplitter();
+  redrawMainCanvas();
+
+  window.addEventListener('resize', () => {
+    redrawMainCanvas();
+  });
+
+  const fileInput = document.getElementById('csvFileInput');
+  document.getElementById('btnLoadCsv').addEventListener('click', () => {
+    fileInput.value = '';
+    fileInput.click();
+  });
+
+  fileInput.addEventListener('change', async (e) => {
+    const file = e.target.files && e.target.files[0];
+    if (!file) return;
+
+    showLoading(`"${file.name}" 로드 및 데이터 분석 중...`);
+    await new Promise(r => setTimeout(r, 30));
+
+    try {
+      const parsed = await processCsvFile(file);
+      state.currentFile = file;
+      state.fileName = file.name;
+      state.encoding = parsed.encoding;
+      state.hasDescRow = parsed.hasDescRow;
+      state.columns = parsed.columns;
+      state.nameMap = parsed.nameMap;
+      state.rowCount = parsed.rowCount;
+      state.fileInfoText = parsed.fileInfoText;
+      state.columnCache = parsed.columnCache;
+
+      document.getElementById('lblCsvStatus').textContent =
+        `✅ ${file.name} (${parsed.rowCount.toLocaleString()} rows)`;
+      document.getElementById('lblFileTitle').textContent = `File : ${file.name}`;
+
+      state.compType = null;
+      document.getElementById('lblCompStatus').textContent = '대기 중...';
+      document.getElementById('lblCompTitle').textContent = 'Comp Type : -';
+      document.getElementById('lblResultTitle').textContent = 'Envelop Result : -';
+      document.getElementById('btnRunAnalysis').disabled = true;
+
+      document.getElementById('txtAnalysisResult').value =
+        parsed.fileInfoText + '\n\n▶ 이어서 "Comp 유형 선택" 버튼을 눌러 Linear / Inverter 를 선택하세요.';
+
+      hideLoading();
+      await handleSelectCompType();
+    } catch (err) {
+      hideLoading();
+      state.currentFile = null;
+      document.getElementById('lblCsvStatus').textContent = '❌ 로드 실패';
+      showMessageBox('CSV 로드 오류', `파일을 읽는 중 오류가 발생했습니다.\n\n${err.message}`, 'error');
+    }
+  });
+
+  document.getElementById('btnSelectComp').addEventListener('click', () => {
+    handleSelectCompType();
+  });
+
+  document.getElementById('btnRunAnalysis').addEventListener('click', () => {
+    handleRunAnalysis();
+  });
+
+  document.getElementById('btnSaveGraph').addEventListener('click', () => {
+    saveGraphJpg();
+  });
+
+  document.getElementById('btnExportDashboard').addEventListener('click', () => {
+    exportDashboardCsv();
+  });
+
+  document.getElementById('btnExportData').addEventListener('click', () => {
+    exportFullDataCsv();
+  });
+
+  document.getElementById('btnExit').addEventListener('click', () => {
+    // Web 환경에서의 종료 동작 : 상태 초기화 안내 후 초기 상태로 리셋 또는 창 닫기 시도
+    state.currentFile = null;
+    state.compType = null;
+    state.resultDf = null;
+    state.dashboardDf = null;
+    state.plotSpec = null;
+    state.viewLimits = null;
+    document.getElementById('lblCsvStatus').textContent = '대기 중...';
+    document.getElementById('lblCompStatus').textContent = '대기 중...';
+    document.getElementById('lblFileTitle').textContent = 'File : -';
+    document.getElementById('lblCompTitle').textContent = 'Comp Type : -';
+    document.getElementById('lblResultTitle').textContent = 'Envelop Result : -';
+    document.getElementById('txtAnalysisResult').value = '';
+    document.getElementById('dataTableHead').innerHTML = '';
+    document.getElementById('dataTableBody').innerHTML = '';
+    document.getElementById('lblTableTitle').textContent = 'Envelop 분석 데이터 테이블';
+    document.getElementById('btnRunAnalysis').disabled = true;
+    document.getElementById('btnSaveGraph').disabled = true;
+    document.getElementById('btnExportDashboard').disabled = true;
+    document.getElementById('btnExportData').disabled = true;
+    initColumnSlotsUI();
+    redrawMainCanvas();
+    try { window.close(); } catch (e) {}
+  });
+});
+</script>
+</body>
+</html>
